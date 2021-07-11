@@ -13,7 +13,9 @@
 // limitations under the License.
 
 use std::mem::transmute;
+use std::sync::Mutex;
 
+use lazy_static::lazy_static;
 use objc::runtime::{Class, Object};
 use objc::{msg_send, sel, sel_impl};
 use objc_foundation::{INSArray, INSObject, INSString};
@@ -21,6 +23,11 @@ use objc_foundation::{NSArray, NSDictionary, NSObject, NSString};
 use objc_id::{Id, Owned};
 
 use crate::common::*;
+
+// creating or accessing the context is not thread-safe, and needs to be protected
+lazy_static! {
+    static ref CLIPBOARD_CONTEXT_MUTEX: Mutex<()> = Mutex::new(());
+}
 
 pub struct OSXClipboardContext {
     pasteboard: Id<Object>,
@@ -32,6 +39,10 @@ extern "C" {}
 
 impl OSXClipboardContext {
     pub fn new() -> Result<OSXClipboardContext> {
+        let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
+        if !lock.is_ok() {
+            return Err("could not acquire mutex".into());
+        }
         let cls = Class::get("NSPasteboard").ok_or("Class::get(\"NSPasteboard\")")?;
         let pasteboard: *mut Object = unsafe { msg_send![cls, generalPasteboard] };
         if pasteboard.is_null() {
@@ -44,6 +55,10 @@ impl OSXClipboardContext {
 
 impl ClipboardProvider for OSXClipboardContext {
     fn get_contents(&mut self) -> Result<String> {
+        let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
+        if !lock.is_ok() {
+            return Err("could not acquire mutex".into());
+        }
         let string_class: Id<NSObject> = {
             let cls: Id<Class> = unsafe { Id::from_ptr(class("NSString")) };
             unsafe { transmute(cls) }
@@ -66,6 +81,10 @@ impl ClipboardProvider for OSXClipboardContext {
     }
 
     fn set_contents(&mut self, data: String) -> Result<()> {
+        let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
+        if !lock.is_ok() {
+            return Err("could not acquire mutex".into());
+        }
         let string_array = NSArray::from_vec(vec![NSString::from_str(&data)]);
         let _: usize = unsafe { msg_send![self.pasteboard, clearContents] };
         let success: bool = unsafe { msg_send![self.pasteboard, writeObjects: string_array] };
