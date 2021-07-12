@@ -14,7 +14,7 @@
 #![deny(clippy::all, clippy::if_not_else, clippy::enum_glob_use, clippy::wrong_pub_self_convention)]
 
 mod common;
-pub use crate::common::{ClipboardProvider, Result};
+pub use crate::common::{ClipboardProvider, ContentType, Result};
 
 #[cfg(all(
     unix,

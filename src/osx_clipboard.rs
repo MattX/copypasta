@@ -18,7 +18,7 @@ use std::sync::{Mutex, MutexGuard};
 use lazy_static::lazy_static;
 use objc::runtime::{Class, Object};
 use objc::{msg_send, sel, sel_impl};
-use objc_foundation::{INSArray, INSObject, INSString, INSFastEnumeration};
+use objc_foundation::{INSArray, INSData, INSFastEnumeration, INSObject, INSString, NSData};
 use objc_foundation::{NSArray, NSDictionary, NSObject, NSString};
 use objc_id::{Id, Owned};
 
@@ -28,7 +28,8 @@ struct ClipboardMutexToken;
 
 // creating or accessing the context is not thread-safe, and needs to be protected
 lazy_static! {
-    static ref CLIPBOARD_CONTEXT_MUTEX: Mutex<ClipboardMutexToken> = Mutex::new(ClipboardMutexToken {});
+    static ref CLIPBOARD_CONTEXT_MUTEX: Mutex<ClipboardMutexToken> =
+        Mutex::new(ClipboardMutexToken {});
 }
 
 pub struct OSXClipboardContext {
@@ -58,13 +59,14 @@ impl OSXClipboardContext {
         unsafe {
             // TODO I don't understand the memory model here. The NSArray we get is a copy, as
             //      seen in https://developer.apple.com/documentation/appkit/nspasteboard/1529995-pasteboarditems?language=objc
-            //      but the elements themselves are not. So when are they deallocated? On the next call
-            //      to pasteboardItems? That seems wasteful?
+            //      but the elements themselves are not. So when are they deallocated? On the next
+            // call      to pasteboardItems? That seems wasteful?
+            // TODO valgrind this
             let items: *mut NSArray<NSObject> = msg_send![self.pasteboard, pasteboardItems];
             if items.is_null() {
                 return None;
             }
-            let _id_items: Id<NSArray<_>, Owned> = Id::from_ptr(items);
+            let _id_items: Id<NSArray<NSObject>> = Id::from_ptr(items);
             (&*items).first_object()
         }
     }
@@ -121,11 +123,31 @@ impl ClipboardProvider for OSXClipboardContext {
         if first_item.is_none() {
             return Ok(Vec::new());
         }
-        let types: Id<NSArray<NSString>, Owned> = unsafe {
+        let types: Id<NSArray<NSString>> = unsafe {
             let types: *mut NSArray<NSString> = msg_send![first_item.unwrap(), types];
             Id::from_ptr(types)
         };
-        Ok(types.enumerator().into_iter().map(|t| ContentType::Custom(t.as_str().into())).collect())
+        Ok(types.enumerator().into_iter().map(|t| t.as_str().into()).collect())
+    }
+
+    fn get_content_for_type(&self, ct: &ContentType) -> Result<Option<Vec<u8>>> {
+        let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
+        if !lock.is_ok() {
+            return Err("could not acquire mutex".into());
+        }
+        let first_item = self.first_item(&mut lock.unwrap());
+        if first_item.is_none() {
+            return Ok(None);
+        }
+        let typ: Id<NSString> = ct.into();
+        let data: Id<NSData> = unsafe {
+            let data: *mut NSData = msg_send![self.pasteboard, dataForType: typ];
+            if data.is_null() {
+                return Ok(None);
+            }
+            Id::from_ptr(data)
+        };
+        Ok(Some(data.bytes().to_vec()))
     }
 }
 
@@ -136,17 +158,31 @@ impl ClipboardProvider for OSXClipboardContext {
 //       hardcoding them here?
 //       https://developer.apple.com/documentation/appkit/nspasteboard/pasteboardtype
 //       I'm not really sure how this works though. Do I need some sort of bindgen?
-impl From<ContentType> for Result<Id<NSString, Owned>> {
-    fn from(pboard_type: ContentType) -> Self {
-        Ok(NSString::from_str(&match pboard_type {
-            ContentType::Url => "public.file-url".to_owned(),
-            ContentType::Html => "public.html".to_owned(),
-            ContentType::Pdf => "com.adobe.pdf".to_owned(),
-            ContentType::Png => "public.png".to_owned(),
-            ContentType::Rtf => "public.rtf".to_owned(),
-            ContentType::Text => "public.utf8-plain-text".to_owned(),
+impl<'a> From<&'a ContentType> for Id<NSString> {
+    fn from(pboard_type: &'a ContentType) -> Self {
+        NSString::from_str(&match pboard_type {
+            ContentType::Url => "public.file-url",
+            ContentType::Html => "public.html",
+            ContentType::Pdf => "com.adobe.pdf",
+            ContentType::Png => "public.png",
+            ContentType::Rtf => "public.rtf",
+            ContentType::Text => "public.utf8-plain-text",
             ContentType::Custom(s) => s,
-        }))
+        })
+    }
+}
+
+impl<T: AsRef<str>> From<T> for ContentType {
+    fn from(t: T) -> Self {
+        match t.as_ref() {
+            "public.file-url" => ContentType::Url,
+            "public.html" => ContentType::Html,
+            "com.adobe.pdf" => ContentType::Pdf,
+            "public.png" => ContentType::Png,
+            "public.rtf" => ContentType::Rtf,
+            "public.utf8-plain-text" => ContentType::Text,
+            other => ContentType::Custom(other.to_owned()),
+        }
     }
 }
 
