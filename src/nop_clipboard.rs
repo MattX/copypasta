@@ -28,7 +28,7 @@ impl ClipboardProvider for NopClipboardContext {
             "Attempting to get the contents of the clipboard, which hasn't yet been implemented \
              on this platform."
         );
-        Ok("".to_string())
+        Err("not implemented".into())
     }
 
     fn set_contents(&self, _: String) -> Result<()> {
@@ -36,6 +36,6 @@ impl ClipboardProvider for NopClipboardContext {
             "Attempting to set the contents of the clipboard, which hasn't yet been implemented \
              on this platform."
         );
-        Ok(())
+        Err("not implemented".into())
     }
 }

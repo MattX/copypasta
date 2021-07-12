@@ -44,7 +44,7 @@ impl OSXClipboardContext {
     pub fn new() -> Result<OSXClipboardContext> {
         let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
         if !lock.is_ok() {
-            return Err("could not acquire mutex".into());
+            panic!("could not acquire mutex");
         }
         let cls = Class::get("NSPasteboard").ok_or("Class::get(\"NSPasteboard\")")?;
         let pasteboard: *mut Object = unsafe { msg_send![cls, generalPasteboard] };
@@ -55,12 +55,16 @@ impl OSXClipboardContext {
         Ok(OSXClipboardContext { pasteboard })
     }
 
+    /// Gets the first item from the pasteboard.
+    ///
+    /// Requires a mutex guard to prove that we hold the mutex. This method is called from methods
+    /// which might need to hold the mutex, so it doesn't lock it itself.
     fn first_item(&self, _guard: &mut MutexGuard<ClipboardMutexToken>) -> Option<&NSObject> {
         unsafe {
             // TODO I don't understand the memory model here. The NSArray we get is a copy, as
             //      seen in https://developer.apple.com/documentation/appkit/nspasteboard/1529995-pasteboarditems?language=objc
             //      but the elements themselves are not. So when are they deallocated? On the next
-            // call      to pasteboardItems? That seems wasteful?
+            //      call to pasteboardItems? That seems wasteful?
             // TODO valgrind this
             let items: *mut NSArray<NSObject> = msg_send![self.pasteboard, pasteboardItems];
             if items.is_null() {
@@ -76,7 +80,7 @@ impl ClipboardProvider for OSXClipboardContext {
     fn get_contents(&self) -> Result<String> {
         let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
         if !lock.is_ok() {
-            return Err("could not acquire mutex".into());
+            panic!("could not acquire mutex");
         }
         let string_class: Id<NSObject> = {
             let cls: Id<Class> = unsafe { Id::from_ptr(class("NSString")) };
@@ -102,7 +106,7 @@ impl ClipboardProvider for OSXClipboardContext {
     fn set_contents(&self, data: String) -> Result<()> {
         let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
         if !lock.is_ok() {
-            return Err("could not acquire mutex".into());
+            panic!("could not acquire mutex");
         }
         let string_array = NSArray::from_vec(vec![NSString::from_str(&data)]);
         let _: usize = unsafe { msg_send![self.pasteboard, clearContents] };
@@ -117,7 +121,7 @@ impl ClipboardProvider for OSXClipboardContext {
     fn get_content_types(&self) -> Result<Vec<ContentType>> {
         let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
         if !lock.is_ok() {
-            return Err("could not acquire mutex".into());
+            panic!("could not acquire mutex");
         }
         let first_item = self.first_item(&mut lock.unwrap());
         if first_item.is_none() {
@@ -130,24 +134,24 @@ impl ClipboardProvider for OSXClipboardContext {
         Ok(types.enumerator().into_iter().map(|t| t.as_str().into()).collect())
     }
 
-    fn get_content_for_type(&self, ct: &ContentType) -> Result<Option<Vec<u8>>> {
+    fn get_content_for_type(&self, ct: &ContentType) -> Result<Vec<u8>> {
         let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
         if !lock.is_ok() {
-            return Err("could not acquire mutex".into());
+            panic!("could not acquire mutex");
         }
         let first_item = self.first_item(&mut lock.unwrap());
         if first_item.is_none() {
-            return Ok(None);
+            return Err("clipboard is empty".into());
         }
         let typ: Id<NSString> = ct.into();
         let data: Id<NSData> = unsafe {
             let data: *mut NSData = msg_send![self.pasteboard, dataForType: typ];
             if data.is_null() {
-                return Ok(None);
+                return Err(format!("clipboard does not have data for {:?}", &ct).into());
             }
             Id::from_ptr(data)
         };
-        Ok(Some(data.bytes().to_vec()))
+        Ok(data.bytes().to_vec())
     }
 }
 

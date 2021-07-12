@@ -17,7 +17,6 @@ use std::error::Error;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
-// TODO: come up with some platform-agnostic API for richer types
 /// Trait for clipboard access
 pub trait ClipboardProvider: Send {
     /// Method to get the clipboard contents as a String
@@ -29,7 +28,7 @@ pub trait ClipboardProvider: Send {
         Err("unsupported for this platform".into())
     }
     /// Get data for a particular content type
-    fn get_content_for_type(&self, _ct: &ContentType) -> Result<Option<Vec<u8>>> {
+    fn get_content_for_type(&self, _ct: &ContentType) -> Result<Vec<u8>> {
         Err("unsupported for this platform".into())
     }
     /// Set the mapping of content types to data in the clipboard
