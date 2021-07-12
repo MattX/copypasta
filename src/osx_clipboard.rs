@@ -24,7 +24,7 @@ use objc_id::{Id, Owned};
 
 use crate::common::*;
 
-struct ClipboardMutexToken {}
+struct ClipboardMutexToken;
 
 // creating or accessing the context is not thread-safe, and needs to be protected
 lazy_static! {

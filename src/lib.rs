@@ -14,7 +14,9 @@
 #![deny(clippy::all, clippy::if_not_else, clippy::enum_glob_use, clippy::wrong_pub_self_convention)]
 
 mod common;
-pub use crate::common::ClipboardProvider;
+pub use crate::common::{ClipboardProvider, Result};
+
+use cfg_if::cfg_if;
 
 #[cfg(all(
     unix,
@@ -75,3 +77,7 @@ pub type ClipboardContext = nop_clipboard::NopClipboardContext; // TODO: impleme
     target_os = "emscripten"
 )))]
 pub type ClipboardContext = nop_clipboard::NopClipboardContext;
+
+pub fn get_clipboard_context() -> Result<ClipboardContext> {
+    ClipboardContext::new()
+}
