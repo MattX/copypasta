@@ -24,6 +24,7 @@ lazy_static = "1.4"
 objc = "0.2"
 objc_id = "0.1"
 objc-foundation = "0.1"
+# cacao = "0.2"
 
 [target.'cfg(all(unix, not(any(target_os="macos", target_os="android", target_os="ios", target_os="emscripten"))))'.dependencies]
 x11-clipboard = { version = "0.5.1", optional = true }

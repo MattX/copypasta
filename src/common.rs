@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::error::Error;
+use std::collections::HashMap;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
@@ -23,4 +24,30 @@ pub trait ClipboardProvider: Send {
     fn get_contents(&mut self) -> Result<String>;
     /// Method to set the clipboard contents as a String
     fn set_contents(&mut self, _: String) -> Result<()>;
+
+    /// Get the list of content types supported by the current clipboard item
+    fn get_content_types(&self) -> Result<Vec<ContentType>> {
+        todo!("unsupported for this platform")
+    }
+
+    /// Get data for a particular content type
+    fn get_content_for_type(&self, ct: &ContentType) -> Result<Option<Vec<u8>>> {
+        todo!("unsupported for this platform")
+    }
+
+    /// Set the mapping of content types to data in the clipboard
+    fn set_content_types(&self, map: HashMap<ContentType, Vec<u8>>) -> Result<()> {
+        todo!("unsupported for this platform")
+    }
+}
+
+#[derive(Clone, Debug, Hash)]
+pub enum ContentType {
+    Text,
+    Html,
+    Pdf,
+    Png,
+    Rtf,
+    Url,
+    Custom(String),
 }
