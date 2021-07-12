@@ -71,7 +71,7 @@ impl OSXClipboardContext {
 }
 
 impl ClipboardProvider for OSXClipboardContext {
-    fn get_contents(&mut self) -> Result<String> {
+    fn get_contents(&self) -> Result<String> {
         let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
         if !lock.is_ok() {
             return Err("could not acquire mutex".into());
@@ -97,7 +97,7 @@ impl ClipboardProvider for OSXClipboardContext {
         }
     }
 
-    fn set_contents(&mut self, data: String) -> Result<()> {
+    fn set_contents(&self, data: String) -> Result<()> {
         let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
         if !lock.is_ok() {
             return Err("could not acquire mutex".into());

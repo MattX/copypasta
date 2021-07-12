@@ -21,23 +21,20 @@ pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'stati
 /// Trait for clipboard access
 pub trait ClipboardProvider: Send {
     /// Method to get the clipboard contents as a String
-    fn get_contents(&mut self) -> Result<String>;
+    fn get_contents(&self) -> Result<String>;
     /// Method to set the clipboard contents as a String
-    fn set_contents(&mut self, _: String) -> Result<()>;
-
+    fn set_contents(&self, _: String) -> Result<()>;
     /// Get the list of content types supported by the current clipboard item
     fn get_content_types(&self) -> Result<Vec<ContentType>> {
-        todo!("unsupported for this platform")
+        Err("unsupported for this platform".into())
     }
-
     /// Get data for a particular content type
-    fn get_content_for_type(&self, ct: &ContentType) -> Result<Option<Vec<u8>>> {
-        todo!("unsupported for this platform")
+    fn get_content_for_type(&self, _ct: &ContentType) -> Result<Option<Vec<u8>>> {
+        Err("unsupported for this platform".into())
     }
-
     /// Set the mapping of content types to data in the clipboard
-    fn set_content_types(&self, map: HashMap<ContentType, Vec<u8>>) -> Result<()> {
-        todo!("unsupported for this platform")
+    fn set_content_types(&self, _map: HashMap<ContentType, Vec<u8>>) -> Result<()> {
+        Err("unsupported for this platform".into())
     }
 }
 

@@ -23,7 +23,7 @@ impl NopClipboardContext {
 }
 
 impl ClipboardProvider for NopClipboardContext {
-    fn get_contents(&mut self) -> Result<String> {
+    fn get_contents(&self) -> Result<String> {
         println!(
             "Attempting to get the contents of the clipboard, which hasn't yet been implemented \
              on this platform."
@@ -31,7 +31,7 @@ impl ClipboardProvider for NopClipboardContext {
         Ok("".to_string())
     }
 
-    fn set_contents(&mut self, _: String) -> Result<()> {
+    fn set_contents(&self, _: String) -> Result<()> {
         println!(
             "Attempting to set the contents of the clipboard, which hasn't yet been implemented \
              on this platform."

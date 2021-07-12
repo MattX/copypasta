@@ -16,8 +16,6 @@
 mod common;
 pub use crate::common::{ClipboardProvider, Result};
 
-use cfg_if::cfg_if;
-
 #[cfg(all(
     unix,
     not(any(
