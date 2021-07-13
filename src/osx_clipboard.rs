@@ -173,13 +173,33 @@ impl ClipboardProvider for OSXClipboardContext {
         let items = NSArray::from_vec(vec![pasteboard_item]);
         let result: BOOL = unsafe {
             let _: () = msg_send![self.pasteboard, clearContents];
-            msg_send![self.pasteboard, writeObjects:items]
+            msg_send![self.pasteboard, writeObjects: items]
         };
         if result == NO {
             Err("writeObject failed".into())
         } else {
             Ok(())
         }
+    }
+
+    fn normalize_content_type(ct: ContentType) -> ContentType {
+        match &ct {
+            ContentType::Custom(s) => s.into(),
+            _ => ct,
+        }
+    }
+
+    fn denormalize_content_type(ct: ContentType) -> String {
+        match ct {
+            ContentType::Url => "public.file-url",
+            ContentType::Html => "public.html",
+            ContentType::Pdf => "com.adobe.pdf",
+            ContentType::Png => "public.png",
+            ContentType::Rtf => "public.rtf",
+            ContentType::Text => "public.utf8-plain-text",
+            ContentType::Custom(s) => return s,
+        }
+        .into()
     }
 }
 
@@ -192,15 +212,7 @@ impl ClipboardProvider for OSXClipboardContext {
 //       I'm not really sure how this works though. Do I need some sort of bindgen?
 impl<'a> From<&'a ContentType> for Id<NSString> {
     fn from(pboard_type: &'a ContentType) -> Self {
-        NSString::from_str(&match pboard_type {
-            ContentType::Url => "public.file-url",
-            ContentType::Html => "public.html",
-            ContentType::Pdf => "com.adobe.pdf",
-            ContentType::Png => "public.png",
-            ContentType::Rtf => "public.rtf",
-            ContentType::Text => "public.utf8-plain-text",
-            ContentType::Custom(s) => s,
-        })
+        NSString::from_str(&OSXClipboardContext::denormalize_content_type(pboard_type.clone()))
     }
 }
 

@@ -23,7 +23,8 @@ pub trait ClipboardProvider: Send {
     fn get_contents(&self) -> Result<String>;
     /// Method to set the clipboard contents as a String
     fn set_contents(&self, _: String) -> Result<()>;
-    /// Get the list of content types supported by the current clipboard item
+    /// Get the list of content types supported by the current clipboard item. Content types
+    /// are returned normalized.
     fn get_content_types(&self) -> Result<Vec<ContentType>> {
         Err("unsupported for this platform".into())
     }
@@ -35,8 +36,23 @@ pub trait ClipboardProvider: Send {
     fn set_content_types(&self, _map: HashMap<ContentType, Vec<u8>>) -> Result<()> {
         Err("unsupported for this platform".into())
     }
+    /// Normalize a content type, ensuring it is not a [`ContentType::Custom`] instance if it
+    /// can be represented as another member of [`ContentType`].
+    fn normalize_content_type(_ct: ContentType) -> ContentType {
+        todo!("not implemented for this platform")
+    }
+    /// Denormalize content type. The resulting string can be used to create a
+    /// [`ContentType::Custom`] instance.
+    fn denormalize_content_type(_ct: ContentType) -> String {
+        todo!("not implemented for this platform")
+    }
 }
 
+/// Represents the type or format of cotnent in the clipboard. On most systems, a single clipboard
+/// item may contain alternate representations in different formats.
+///
+/// This enum defines portable values for common formats, as well as a [`ContentType::Custom`]
+/// alternative to represent system-specific types.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum ContentType {
     Text,

@@ -11,6 +11,7 @@ mod tests {
 
     #[test]
     fn foo() {
+        // TODO rewrite this cleanly by spawning threads from one place
         let mut ctx = ClipboardContext::new().unwrap();
         ctx.set_contents("Dummy".into()).unwrap();
         ctx.get_contents().unwrap();
