@@ -16,13 +16,14 @@ use std::mem::transmute;
 use std::sync::{Mutex, MutexGuard};
 
 use lazy_static::lazy_static;
-use objc::runtime::{Class, Object};
+use objc::runtime::{Class, Object, BOOL, NO};
 use objc::{msg_send, sel, sel_impl};
 use objc_foundation::{INSArray, INSData, INSFastEnumeration, INSObject, INSString, NSData};
 use objc_foundation::{NSArray, NSDictionary, NSObject, NSString};
 use objc_id::{Id, Owned};
 
 use crate::common::*;
+use std::collections::HashMap;
 
 struct ClipboardMutexToken;
 
@@ -152,6 +153,33 @@ impl ClipboardProvider for OSXClipboardContext {
             Id::from_ptr(data)
         };
         Ok(data.bytes().to_vec())
+    }
+
+    fn set_content_types(&self, map: HashMap<ContentType, Vec<u8>>) -> Result<()> {
+        let lock = CLIPBOARD_CONTEXT_MUTEX.lock();
+        if !lock.is_ok() {
+            panic!("could not acquire mutex");
+        }
+        let cls = Class::get("NSPasteboardItem").ok_or("Class::get(\"NSPasteboardItem\")")?;
+        let pasteboard_item: Id<NSObject> = unsafe {
+            let item: *mut NSObject = msg_send![cls, new];
+            Id::from_ptr(item)
+        };
+        for (ct, data) in map.into_iter() {
+            let data = NSData::from_vec(data);
+            let typ: Id<NSString> = (&ct).into();
+            unsafe { msg_send![pasteboard_item, setData:data forType:typ] }
+        }
+        let items = NSArray::from_vec(vec![pasteboard_item]);
+        let result: BOOL = unsafe {
+            let _: () = msg_send![self.pasteboard, clearContents];
+            msg_send![self.pasteboard, writeObjects:items]
+        };
+        if result == NO {
+            Err("writeObject failed".into())
+        } else {
+            Ok(())
+        }
     }
 }
 

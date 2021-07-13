@@ -37,7 +37,7 @@ pub trait ClipboardProvider: Send {
     }
 }
 
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum ContentType {
     Text,
     Html,
