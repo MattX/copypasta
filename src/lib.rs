@@ -37,7 +37,7 @@ pub mod wayland_clipboard;
     ))
 ))]
 #[cfg(feature = "x11")]
-pub mod x11_clipboard;
+pub mod x11rb_clipboard;
 
 #[cfg(windows)]
 pub mod windows_clipboard;
@@ -57,7 +57,7 @@ pub mod nop_clipboard;
     ))
 ))]
 #[cfg(feature = "x11")]
-pub type ClipboardContext = x11_clipboard::X11ClipboardContext;
+pub type ClipboardContext = x11rb_clipboard::X11RbClipboardContext;
 #[cfg(windows)]
 pub type ClipboardContext = windows_clipboard::WindowsClipboardContext;
 #[cfg(target_os = "macos")]
